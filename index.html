@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GBA Pro Studio • High-Performance Mac Game Boy Advance Emulator</title>
+  <meta name="description" content="Ultra-enhanced Game Boy Advance emulator for macOS with WebGL HQ4x shaders, CRT scanlines, Fast-Forward turbo, and full Pokémon Action Replay / GameShark cheat engine.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ================= macOS Window Titlebar ================= -->
+  <header class="macos-titlebar">
+    <div class="traffic-lights">
+      <span class="traffic-dot dot-red" id="traffic-close" title="Eject / Close ROM"></span>
+      <span class="traffic-dot dot-yellow" id="traffic-minimize" title="Toggle Compact Mode"></span>
+      <span class="traffic-dot dot-green" id="traffic-maximize" title="Toggle Fullscreen"></span>
+    </div>
+
+    <div class="app-branding">
+      <div class="app-logo">
+        🕹️ GBA Pro <span>MAC</span>
+      </div>
+      <div class="rom-status-chip" id="rom-status-chip">
+        <span class="pulse-indicator" id="rom-pulse-led"></span>
+        <span id="rom-status-text">No ROM Loaded</span>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <button class="btn-icon" id="btn-open-shaders" title="Graphics & Shaders">
+        🎨 <span>Graphics</span>
+      </button>
+      <button class="btn-icon" id="btn-open-cheats" title="Pokémon & GBA Cheats">
+        🧙 <span>Cheats</span>
+      </button>
+      <button class="btn-icon" id="btn-open-controls" title="Keyboard & Gamepad Settings">
+        🎮 <span>Controls</span>
+      </button>
+      <button class="btn-icon" id="btn-open-saves" title="Save States & Battery Saves">
+        💾 <span>Saves</span>
+      </button>
+      <label class="btn-primary" for="rom-file-input" style="cursor: pointer;">
+        📁 <span>Load ROM</span>
+        <input type="file" id="rom-file-input" accept=".gba,.zip,.7z" style="display: none;">
+      </label>
+    </div>
+  </header>
+
+  <!-- ================= Main App Container ================= -->
+  <main class="app-container">
+
+    <!-- Hero Drag & Drop Screen -->
+    <section class="dropzone-hero" id="dropzone-hero">
+      <div class="dropzone-icon-ring">🎮</div>
+      <h1 class="dropzone-title">Drop Your Pokémon ROM Here</h1>
+      <p class="dropzone-desc">
+        Load your Game Boy Advance ROM (<code>.gba</code>, <code>.zip</code>) for enhanced graphics, 
+        instant fast-forward, 128KB Flash &amp; RTC support, and full Pokémon Action Replay / GameShark cheats.
+      </p>
+
+      <div id="detected-rom-card" style="margin: 22px 0 16px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 16px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; text-align: left; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 50px; height: 50px; border-radius: 12px; background: rgba(16, 185, 129, 0.2); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; border: 1px solid rgba(16, 185, 129, 0.4); box-shadow: 0 0 14px rgba(16, 185, 129, 0.3);">
+            🍃
+          </div>
+          <div>
+            <div style="font-size: 1.05rem; font-weight: 700; color: #fff;">Pokémon - Leaf Green Version (U) (V1.1)</div>
+            <div style="font-size: 0.8rem; color: #34d399; margin-top: 3px;">
+              Ready from Downloads • 16.0 MB • 128KB Flash &amp; RTC Active
+            </div>
+          </div>
+        </div>
+        <button class="btn-primary" id="btn-launch-leafgreen" style="background: linear-gradient(135deg, #059669, #10b981); padding: 12px 22px; font-size: 0.95rem; font-weight: 700; box-shadow: 0 4px 18px rgba(16, 185, 129, 0.5); cursor: pointer; white-space: nowrap;">
+          ▶️ Play LeafGreen
+        </button>
+      </div>
+
+      <div class="dropzone-btn-group">
+        <label class="btn-icon" for="hero-file-input" style="cursor: pointer; padding: 10px 18px; font-size: 0.9rem;">
+          📂 Load Another ROM (.gba)
+          <input type="file" id="hero-file-input" accept=".gba,.zip,.7z" style="display: none;">
+        </label>
+        <button class="btn-icon" id="btn-load-demo" style="padding: 10px 18px; font-size: 0.9rem;">
+          ⚡ Try Demo: Anguna RPG
+        </button>
+      </div>
+
+      <div class="feature-pill-row">
+        <div class="feature-pill"><span>⚡</span> Fast Forward 8x (Space)</div>
+        <div class="feature-pill"><span>🎨</span> HQ4x &amp; CRT Shaders</div>
+        <div class="feature-pill"><span>✨</span> 1-Click Pokémon Cheats</div>
+        <div class="feature-pill"><span>💾</span> 128KB Flash &amp; RTC Auto</div>
+        <div class="feature-pill"><span>🎮</span> PS5 / Xbox / Switch Gamepad</div>
+      </div>
+    </section>
+
+    <!-- Emulator Display & Hardware Chassis -->
+    <section class="emulator-wrapper" id="emulator-wrapper">
+
+      <div class="gba-chassis skin-indigo" id="gba-chassis">
+        <!-- Shoulder Buttons -->
+        <div class="gba-top-bar">
+          <div class="gba-shoulder-btn" id="shoulder-l">L TRIGGER</div>
+          <div class="gba-logo-badge">GAME BOY ADVANCE</div>
+          <div class="gba-shoulder-btn" id="shoulder-r">R TRIGGER</div>
+        </div>
+
+        <!-- Screen Bezel & Canvas Viewport -->
+        <div class="screen-bezel">
+          <div class="bezel-header">
+            <div class="power-led-group">
+              <span class="power-led" id="power-led"></span>
+              <span>POWER</span>
+            </div>
+            <div id="rtc-clock" style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-cyan);">
+              RTC: --:--:--
+            </div>
+          </div>
+
+          <div class="screen-container" id="screen-container">
+            <div id="game-viewport"></div>
+            <div class="screen-overlay-scanlines" id="overlay-scanlines"></div>
+            <div class="screen-overlay-lcd" id="overlay-lcd"></div>
+            
+            <!-- On-Screen Fast Forward Speed Badge -->
+            <div class="speed-hud-badge" id="speed-hud-badge">
+              ⚡ <span id="speed-hud-text">4.0X TURBO</span>
+            </div>
+
+            <!-- Toast HUD Notification -->
+            <div class="toast-hud" id="toast-hud">
+              <span id="toast-hud-icon">💾</span>
+              <span id="toast-hud-msg">State Saved</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tactile Hardware Controls -->
+        <div class="gba-hardware-controls" id="gba-controls">
+          <!-- D-Pad -->
+          <div class="dpad">
+            <div class="dpad-center"></div>
+            <button class="dpad-btn dpad-up" id="btn-dpad-up" title="Up Arrow / W">▲</button>
+            <button class="dpad-btn dpad-down" id="btn-dpad-down" title="Down Arrow / S">▼</button>
+            <button class="dpad-btn dpad-left" id="btn-dpad-left" title="Left Arrow / A">◀</button>
+            <button class="dpad-btn dpad-right" id="btn-dpad-right" title="Right Arrow / D">▶</button>
+          </div>
+
+          <!-- Select & Start -->
+          <div class="system-btns">
+            <div class="pill-btn-wrapper">
+              <button class="pill-btn" id="btn-select" title="Select (Shift / Backspace)"></button>
+              <span class="pill-label">SELECT</span>
+            </div>
+            <div class="pill-btn-wrapper">
+              <button class="pill-btn" id="btn-start" title="Start (Enter)"></button>
+              <span class="pill-label">START</span>
+            </div>
+          </div>
+
+          <!-- A & B Buttons -->
+          <div class="action-btns">
+            <button class="action-btn-circle btn-b" id="btn-b" title="B Button (X / J)">B</button>
+            <button class="action-btn-circle btn-a" id="btn-a" title="A Button (Z / K)">A</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Emulation Control HUD -->
+      <div class="floating-hud">
+        <div class="hud-group">
+          <button class="turbo-btn" id="hud-turbo-btn" title="Hold or Toggle Spacebar">
+            ⚡ TURBO <span>(SPACE)</span>
+          </button>
+          <div class="hud-stat">FPS: <span id="hud-fps">60.0</span></div>
+          <div class="hud-stat">SPEED: <span id="hud-speed">100%</span></div>
+        </div>
+
+        <div class="hud-group">
+          <button class="btn-icon" id="hud-quicksave" title="Quick Save State (F1)">
+            💾 <span>Save (F1)</span>
+          </button>
+          <button class="btn-icon" id="hud-quickload" title="Quick Load State (F3)">
+            🔄 <span>Load (F3)</span>
+          </button>
+          <button class="btn-icon" id="hud-screenshot" title="Take Screenshot (P)">
+            📸 <span>Photo (P)</span>
+          </button>
+        </div>
+
+        <div class="hud-group">
+          <select class="form-control" id="shell-skin-select" title="Change GBA Shell Color">
+            <option value="skin-indigo">🟣 Classic Indigo</option>
+            <option value="skin-glacier">🧊 Glacier Clear</option>
+            <option value="skin-silver">⚪ Platinum SP</option>
+            <option value="skin-ruby">🔴 Ruby Red</option>
+            <option value="skin-emerald">🟢 Emerald Green</option>
+            <option value="skin-onyx">⚫ Onyx Black</option>
+            <option value="skin-borderless">📺 TV / Borderless</option>
+          </select>
+          <button class="btn-icon" id="hud-fullscreen-btn" title="Toggle Fullscreen (F11 / F)">
+            ⛶
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ================= MODAL: Graphics & Shaders Hub ================= -->
+  <div class="modal-backdrop" id="modal-shaders">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h2 class="modal-title">🎨 Graphics Enhancement Suite</h2>
+        <button class="modal-close" data-close="modal-shaders">&times;</button>
+      </div>
+      <div class="modal-body">
+        
+        <div class="setting-section">
+          <span class="setting-section-title">Hardware WebGL Upscalers &amp; Shaders</span>
+          <div class="setting-card">
+            <div class="setting-card-info">
+              <span class="setting-card-name">Active Display Shader</span>
+              <span class="setting-card-desc">Upscales 240x160 pixels into high-res smooth graphics</span>
+            </div>
+            <select class="form-control" id="shader-select" style="min-width: 170px;">
+              <option value="4xScaleHQ.glslp">HQ4x (Ultra HD Vector Smooth)</option>
+              <option value="2xScaleHQ.glslp">HQ2x (Crisp Pixel Art)</option>
+              <option value="sabr">SABR (Adaptive Edge Smoothing)</option>
+              <option value="crt-easymode.glslp">CRT Retro Scanlines</option>
+              <option value="crt-geom.glslp">CRT Arcade Curved Screen</option>
+              <option value="bicubic">Bicubic Soft Anti-Aliasing</option>
+              <option value="disabled">Pixel-Perfect (Native Crisp)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-section">
+          <span class="setting-section-title">Color Grading &amp; Vibrancy (GBA LCD Correction)</span>
+          
+          <div class="setting-card">
+            <div class="setting-card-info">
+              <span class="setting-card-name">GBA LCD Gamut Color Correction</span>
+              <span class="setting-card-desc">Corrects hyper-saturated neon colors on Mac Retina/OLED displays</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-color-correction" checked>
+              <span class="slider-round"></span>
+            </label>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-card-info">
+              <span class="setting-card-name">Vibrancy / Saturation Boost</span>
+              <span class="setting-card-desc">Lush Pokémon world colors &amp; battle effects</span>
+            </div>
+            <div class="range-slider-group">
+              <input type="range" id="slider-saturation" min="80" max="180" value="120">
+              <span class="range-val" id="val-saturation">120%</span>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-card-info">
+              <span class="setting-card-name">Display Contrast</span>
+              <span class="setting-card-desc">Deep blacks &amp; enhanced dynamic range</span>
+            </div>
+            <div class="range-slider-group">
+              <input type="range" id="slider-contrast" min="80" max="150" value="110">
+              <span class="range-val" id="val-contrast">110%</span>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-card-info">
+              <span class="setting-card-name">Display Brightness</span>
+              <span class="setting-card-desc">Calibrate screen brightness</span>
+            </div>
+            <div class="range-slider-group">
+              <input type="range" id="slider-brightness" min="80" max="140" value="105">
+              <span class="range-val" id="val-brightness">105%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-section">
+          <span class="setting-section-title">Authentic Screen Overlays</span>
+
+          <div class="setting-card">
+            <div class="setting-card-info">
+              <span class="setting-card-name">GBA LCD Subpixel Matrix Grid</span>
+              <span class="setting-card-desc">Simulates authentic Game Boy Advance screen dot pattern</span>
+            </div>
+            <div class="range-slider-group">
+              <input type="range" id="slider-lcd-grid" min="0" max="80" value="0">
+              <span class="range-val" id="val-lcd-grid">0%</span>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-card-info">
+              <span class="setting-card-name">CRT Scanline Glow</span>
+              <span class="setting-card-desc">Simulates retro television horizontal scanlines</span>
+            </div>
+            <div class="range-slider-group">
+              <input type="range" id="slider-scanlines" min="0" max="80" value="0">
+              <span class="range-val" id="val-scanlines">0%</span>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-card-info">
+              <span class="setting-card-name">Aspect Ratio</span>
+              <span class="setting-card-desc">Display scaling geometry</span>
+            </div>
+            <select class="form-control" id="aspect-ratio-select">
+              <option value="3/2">Authentic GBA 3:2</option>
+              <option value="fill">Fill Screen</option>
+              <option value="16/9">Widescreen 16:9</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: Pokémon & GBA Cheats Vault ================= -->
+  <div class="modal-backdrop" id="modal-cheats">
+    <div class="modal-window" style="max-width: 720px;">
+      <div class="modal-header">
+        <h2 class="modal-title">🧙 Pokémon Cheats Vault &amp; Injector</h2>
+        <button class="modal-close" data-close="modal-cheats">&times;</button>
+      </div>
+      <div class="modal-body">
+        
+        <div class="cheats-tabs" id="cheats-tabs">
+          <button class="tab-btn active" data-tab="BPEE">🌿 Emerald</button>
+          <button class="tab-btn" data-tab="BPRE">🔥 FireRed</button>
+          <button class="tab-btn" data-tab="BPGE">🍃 LeafGreen</button>
+          <button class="tab-btn" data-tab="AXVE">💎 Ruby</button>
+          <button class="tab-btn" data-tab="AXPE">🌊 Sapphire</button>
+          <button class="tab-btn" data-tab="CUSTOM">🛠️ Custom Cheat</button>
+        </div>
+
+        <div id="cheats-tab-content" style="display: flex; flex-direction: column; gap: 10px;">
+          <!-- Dynamically populated cheat cards -->
+        </div>
+
+        <!-- Custom Cheat Form (shown on CUSTOM tab) -->
+        <div id="custom-cheat-panel" style="display: none; flex-direction: column; gap: 14px;">
+          <div class="setting-card-info">
+            <span class="setting-card-name">Add New GameShark / Action Replay Code</span>
+            <span class="setting-card-desc">Type or paste any Game Boy Advance cheat code directly into the active game memory.</span>
+          </div>
+
+          <input type="text" id="custom-cheat-name" class="form-control" placeholder="Cheat Description (e.g. Infinite Master Balls)">
+          <select id="custom-cheat-format" class="form-control">
+            <option value="Action Replay v3">Action Replay v3 / GameShark SP</option>
+            <option value="CodeBreaker">CodeBreaker / GameShark v1-v2</option>
+            <option value="Raw">Raw Memory Address</option>
+          </select>
+          <textarea id="custom-cheat-code" class="form-control" rows="4" placeholder="Enter Code (One line per instruction, e.g.&#10;82005274 0001)"></textarea>
+
+          <button class="btn-primary" id="btn-add-custom-cheat" style="align-self: flex-start;">
+            ➕ Inject Cheat Code
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: Keyboard & Gamepad Controls ================= -->
+  <div class="modal-backdrop" id="modal-controls">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h2 class="modal-title">🎮 Mac Keyboard &amp; Gamepad Controls</h2>
+        <button class="modal-close" data-close="modal-controls">&times;</button>
+      </div>
+      <div class="modal-body">
+
+        <div class="setting-section">
+          <span class="setting-section-title">Turbo &amp; Emulation Hotkeys</span>
+          <div class="setting-card">
+            <div class="setting-card-info">
+              <span class="setting-card-name">Fast Forward Turbo Multiplier</span>
+              <span class="setting-card-desc">Emulation speedup factor when Spacebar is pressed</span>
+            </div>
+            <select class="form-control" id="ff-speed-select">
+              <option value="2">2.0x Speed</option>
+              <option value="3">3.0x Speed</option>
+              <option value="4" selected>4.0x Speed (Recommended)</option>
+              <option value="8">8.0x Speed (Ultra Fast)</option>
+              <option value="0">Max Speed (Unlimited)</option>
+            </select>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-card-info">
+              <span class="setting-card-name">Fast Forward Trigger Mode</span>
+              <span class="setting-card-desc">Hold Spacebar to speed up, or tap Spacebar to toggle</span>
+            </div>
+            <select class="form-control" id="ff-mode-select">
+              <option value="hold">Hold Spacebar</option>
+              <option value="toggle">Toggle (Tap On/Off)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-section">
+          <span class="setting-section-title">Keyboard Keybindings (Click key to remap)</span>
+          <div class="key-mapping-grid" id="key-mapping-grid">
+            <!-- Dynamically populated keybindings -->
+          </div>
+        </div>
+
+        <div class="setting-section">
+          <span class="setting-section-title">Connected Gamepad (Bluetooth / USB)</span>
+          <div class="setting-card">
+            <div class="setting-card-info">
+              <span class="setting-card-name" id="gamepad-name">No Gamepad Detected</span>
+              <span class="setting-card-desc" id="gamepad-status">Connect your PS5 DualSense, Xbox Series, or Switch Pro controller</span>
+            </div>
+            <button class="btn-icon" id="btn-test-vibrate" style="display: none;">
+              📳 Test Rumble
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: Saves & Battery Backup ================= -->
+  <div class="modal-backdrop" id="modal-saves">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h2 class="modal-title">💾 Save States &amp; Battery Backup (.sav)</h2>
+        <button class="modal-close" data-close="modal-saves">&times;</button>
+      </div>
+      <div class="modal-body">
+        
+        <div class="setting-section">
+          <span class="setting-section-title">Quick State Slots</span>
+          <div class="state-slots-grid" id="state-slots-grid">
+            <!-- Slots 1 - 5 -->
+          </div>
+        </div>
+
+        <div class="setting-section">
+          <span class="setting-section-title">Save State File Actions</span>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn-icon" id="btn-export-state" style="flex: 1; justify-content: center;">
+              📥 Export State (.state)
+            </button>
+            <label class="btn-icon" for="import-state-input" style="flex: 1; justify-content: center; cursor: pointer;">
+              📤 Import State
+              <input type="file" id="import-state-input" accept=".state,.sav" style="display: none;">
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-section">
+          <span class="setting-section-title">Pokémon In-Game Battery Save (.sav)</span>
+          <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+            GBA Pro Studio auto-detects 128KB Flash for Pokémon games. You can export your actual battery <code>.sav</code> 
+            file to edit with <strong>PKHeX</strong>, play on mGBA desktop, or flash onto physical Game Boy cartridges!
+          </p>
+          <div style="display: flex; gap: 10px; margin-top: 8px;">
+            <button class="btn-primary" id="btn-export-battery" style="flex: 1; justify-content: center;">
+              💾 Export .sav File
+            </button>
+            <label class="btn-icon" for="import-battery-input" style="flex: 1; justify-content: center; cursor: pointer;">
+              📂 Load .sav File
+              <input type="file" id="import-battery-input" accept=".sav,.srm" style="display: none;">
+            </label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="cheats-db.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

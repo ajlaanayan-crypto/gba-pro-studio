@@ -1,0 +1,25 @@
+{
+  "name": "gba-pro-studio-mac",
+  "version": "1.0.0",
+  "description": "High Performance Game Boy Advance Emulator with Graphics Enhancer, Fast Forward, Cheats & Mac Integration",
+  "main": "main.js",
+  "scripts": {
+    "start": "npx electron .",
+    "app": "npx electron .",
+    "server": "node server.js"
+  },
+  "keywords": [
+    "gba",
+    "emulator",
+    "pokemon",
+    "shaders",
+    "cheats",
+    "mac",
+    "retrogaming"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^44.4.5"
+  }
+}
